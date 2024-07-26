@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # Adjust BUN_VERSION as desired
-ARG BUN_VERSION=1.0-slim
+ARG BUN_VERSION=1.1.13-slim
 FROM oven/bun:${BUN_VERSION} as base
 
 LABEL fly_launch_runtime="Bun"
@@ -32,4 +32,4 @@ USER chrome:chrome
 COPY --link . .
 
 # Start the server
-CMD [ "bun", "server.ts" ]
+CMD [ "bun", "run", "start" ]

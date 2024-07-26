@@ -1,132 +1,84 @@
-// PDF appliance - offload generating PDFs on demand for your application
-//
-// Handles http requests for paths ending in .pdf, by stripping off the
-// extension and using puppeteer to fetch the modified path from the
-// host app, convert that page to PDF and return the generated
-// PDF as the response.
-//
-// Requests for anything else will be redirected back to the host application
-// after reseting the timeout.  This is useful for ensuring that the Chrome
-// instance is "warmed-up" prior to issuing requests.
-
-import puppeteer, { PaperFormat } from 'puppeteer-core'
+import puppeteer from 'puppeteer-core';
+import pg from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Scrapper } from './models/domain';
+import { Konzum } from './scrappers/konzum';
+import * as schema from './db/schema';
 
 // fetch configuration fron environment variables
-const PORT = process.env.PORT || 3000
-const FORMAT = (process.env.FORMAT || "letter") as PaperFormat
-const JAVASCRIPT = (process.env.JAVASCRIPT != "false")
-const TIMEOUT = (parseInt(process.env.TIMEOUT || '15')) * 60 * 1000 // minutes
-const HOSTNAME = process.env.HOSTNAME ||
-  (process.env.FLY_APP_NAME?.endsWith("-pdf") &&
-    `${process.env.FLY_APP_NAME.slice(0, -4)}.fly.dev`)
-
-if (!HOSTNAME) {
-  console.error("HOSTNAME is required")
-  process.exit(1)
-}
+const PORT = process.env.PORT || 3000;
 
 // location of Chrome executable (useful for local debugging)
-const chrome = process.platform == "darwin"
-  ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-  : '/usr/bin/google-chrome'
+const chrome =
+  process.platform == 'darwin'
+    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+    : '/usr/bin/google-chrome-stable';
 
 // launch a single headless Chrome instance to be used by all requests
 const browser = await puppeteer.launch({
-  headless: "new",
-  executablePath: chrome
-})
+  headless: 'new',
+  executablePath: chrome,
+});
 
-// start initial timeout
-let timeout = setTimeout(exit, TIMEOUT)
+// open database
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 10000,
+});
+const db = drizzle(pool, { schema, logger: true });
+
+const scrappers: Scrapper[] = [new Konzum()];
 
 // process HTTP requests
 const server = Bun.serve({
   port: PORT,
 
   async fetch(request) {
-    // cancel timeout
-    clearTimeout(timeout)
+    const { method } = request;
+    const { pathname } = new URL(request.url);
 
-    // map URL to showcase site
-    const url = new URL(request.url)
-    url.hostname = HOSTNAME
-    url.protocol = 'https:'
-    url.port = ''
+    if (method === 'GET' && pathname === '/api/scrape') {
+      try {
+        for (const scrapper of scrappers) {
+          await scrapper.fetch(db);
+        }
 
-    // redirect non pdf requests back to host
-    if (!url.pathname.endsWith('.pdf')) {
-      // start new timeout
-      timeout = setTimeout(exit, TIMEOUT)
+        exit();
 
-      return new Response(`Non PDF request - redirecting`, {
-        status: 301,
-        headers: { Location: url.href }
-      })
+        return new Response('Done', { status: 200 });
+      } catch (error: unknown) {
+        // handle errors
+        if (error instanceof Error) {
+          console.error(error.stack || error);
+          return new Response(`<pre>${error.stack || error}</pre>`, {
+            status: 500,
+            headers: { 'Content-Type': 'text/html' },
+          });
+        } else {
+          // Handle non-Error exceptions (rare but possible)
+          console.error(String(error));
+          return new Response(`<pre>${String(error)}</pre>`, {
+            status: 500,
+            headers: { 'Content-Type': 'text/html' },
+          });
+        }
+      } finally {
+        console.log(`Printer server listening on port ${server.port}`);
+      }
     }
 
-    // strip [index].pdf from end of URL
-    url.pathname = url.pathname.slice(0, -4)
-    if (url.pathname.endsWith('/index')) url.pathname = url.pathname.slice(0, -5)
+    return new Response('Not Found', { status: 404 });
+  },
+});
 
-    console.log(`Printing ${url.href}`)
+console.log(`Server listening on port ${server.port}`);
 
-    // create a new browser page (tab)
-    const page = await browser.newPage()
+process.on('SIGINT', exit);
 
-    // main puppeteer logic: fetch url, convert to URL, return response
-    try {
-      // disable javascript (optional)
-      await page.setJavaScriptEnabled(JAVASCRIPT)
-
-      // copy headers (including auth, excluding host) from original request
-      const headers = Object.fromEntries(request.headers)
-      delete headers.host
-      await page.setExtraHTTPHeaders(headers)
-
-      // fetch page to be printed
-      await page.goto(url.href, {
-        waitUntil: JAVASCRIPT ? 'networkidle2' : 'load'
-      })
-
-      // convert page to pdf - using preferred format and in full color
-      const pdf = await page.pdf({
-        format: FORMAT,
-        preferCSSPageSize: true,
-        printBackground: true
-      })
-
-      // return the generated PDF as the response
-      return new Response(pdf, {
-        headers: { "Content-Type": "application/pdf" }
-      })
-
-    } catch (error: any) {
-      // handle errors
-      console.error(error.stack || error);
-      return new Response(`<pre>${error.stack || error}</pre>`, {
-	status: 500,
-	headers: { "Content-Type": "text/html" }
-      })
-
-    } finally {
-      // close tab
-      page.close()
-
-      // start new timeout
-      clearTimeout(timeout)
-      timeout = setTimeout(exit, TIMEOUT)
-    }
-  }
-})
-
-console.log(`Printer server listening on port ${server.port}`)
-
-process.on("SIGINT", exit)
-
-// Exit cleanly on either SIGINT or timeout.  The fly proxy will restart the
-// app when the next request comes in.
 function exit() {
-  console.log("exiting")
-  browser.close()
-  process.exit()
+  console.log('exiting');
+  browser.close();
+  pool.end();
+  process.exit();
 }

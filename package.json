@@ -1,9 +1,27 @@
 {
-  "name": "pdf-appliance",
+  "name": "workhours-scrapper",
+  "scripts": {
+    "start": "bun server.ts",
+    "start:local": "bun --hot --env-file .env.local server.ts",
+    "lint": "eslint . --fix"
+  },
   "dependencies": {
+    "axios": "^1.7.2",
+    "drizzle-orm": "^0.31.2",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "pg": "^8.12.0",
+    "prettier": "^3.3.3",
     "puppeteer-core": "^21.5.2"
   },
   "devDependencies": {
-    "bun-types": "^1.0.14"
+    "@types/node": "^20.14.2",
+    "@types/pg": "^8.11.6",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "bun-types": "^1.0.14",
+    "eslint": "^8.57.0",
+    "prettier-eslint": "^16.3.0",
+    "typescript": "^5.5.4"
   }
 }
