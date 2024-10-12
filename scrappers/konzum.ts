@@ -4,6 +4,7 @@ import { sql, and, eq, ExtractTablesWithRelations } from 'drizzle-orm';
 import { extractCity } from '../utils/common';
 import {
   KonzumData,
+  KonzumLocations,
   KonzumWorkhour,
   LocalizableString,
   Location,
@@ -42,51 +43,47 @@ export class Konzum implements Scrapper {
     try {
       await db.transaction(
         async (tx) => {
-          let retailChainId: number;
-          const [retailChain] = await tx
-            .select()
-            .from(retailChains)
-            .where(eq(retailChains.name, konzumName));
-
-          if (retailChain) {
-            retailChainId = retailChain.id;
-          } else {
-            const [insertResult] = await tx
-              .insert(retailChains)
-              .values({ name: konzumName })
-              .returning({ insertedId: retailChains.id });
-            retailChainId = insertResult.insertedId;
-          }
+          const retailChainId: number = await this.saveRetailChain(tx);
 
           for (const location of data.locations) {
-            let cityId: number;
-            const cityName = extractCity(location.address);
-            const [city] = await tx
-              .select()
-              .from(cities)
-              .where(eq(cities.name, cityName));
+            const cityId: number = await this.saveCity(location, tx);
 
-            if (city) {
-              cityId = city.id;
-            } else {
-              const [insertResult] = await tx
-                .insert(cities)
-                .values({ name: cityName })
-                .returning({ insertedId: cities.id });
-              cityId = insertResult.insertedId;
-            }
+            const [existigLocation] = await tx
+              .select({ id: locations.id })
+              .from(locations)
+              .where(
+                and(
+                  eq(locations.retailChainId, retailChainId),
+                  eq(locations.cityId, cityId),
+                  eq(locations.address, location.address)
+                )
+              );
+
+            const upsertValues: Partial<Location> = {
+              name: location.name,
+              address: location.address,
+              phoneNumber: location.phone_number,
+              description: location.type.join(),
+              openThisSunday: location.open_this_sunday,
+            };
 
             const [insertResult] = await tx
               .insert(locations)
-              .values({
-                name: location.name,
-                address: location.address,
-                phoneNumber: location.phone_number,
-                description: location.type.join(),
-                openThisSunday: location.open_this_sunday,
-                cityId,
-                retailChainId,
-              } as Partial<Location>)
+              .values(
+                existigLocation?.id
+                  ? { id: existigLocation.id, ...upsertValues }
+                  : { ...upsertValues }
+              )
+              .onConflictDoUpdate({
+                target: locations.id,
+                set: {
+                  name: upsertValues.name,
+                  address: upsertValues.address,
+                  phoneNumber: upsertValues.phoneNumber,
+                  description: upsertValues.description,
+                  openThisSunday: upsertValues.openThisSunday,
+                },
+              })
               .returning({ insertedId: locations.id });
 
             const locationId = insertResult.insertedId;
@@ -118,7 +115,60 @@ export class Konzum implements Scrapper {
     }
   }
 
-  async saveWorkhoursForLocation(
+  private async saveCity(
+    location: KonzumLocations,
+    tx: PgTransaction<
+      NodePgQueryResultHKT,
+      typeof schema,
+      ExtractTablesWithRelations<typeof schema>
+    >
+  ) {
+    let cityId: number;
+    const cityName = extractCity(location.address);
+    const [city] = await tx
+      .select()
+      .from(cities)
+      .where(eq(cities.name, cityName));
+
+    if (city) {
+      cityId = city.id;
+    } else {
+      const [insertResult] = await tx
+        .insert(cities)
+        .values({ name: cityName })
+        .returning({ insertedId: cities.id });
+      cityId = insertResult.insertedId;
+    }
+    return cityId;
+  }
+
+  private async saveRetailChain(
+    tx: PgTransaction<
+      NodePgQueryResultHKT,
+      typeof schema,
+      ExtractTablesWithRelations<typeof schema>
+    >
+  ) {
+    let retailChainId: number;
+    const [retailChain] = await tx
+      .select()
+      .from(retailChains)
+      .where(eq(retailChains.name, konzumName));
+
+    if (retailChain) {
+      retailChainId = retailChain.id;
+    } else {
+      const [insertResult] = await tx
+        .insert(retailChains)
+        .values({ name: konzumName })
+        .returning({ insertedId: retailChains.id });
+      retailChainId = insertResult.insertedId;
+    }
+
+    return retailChainId;
+  }
+
+  private async saveWorkhoursForLocation(
     tx: PgTransaction<
       NodePgQueryResultHKT,
       typeof schema,
@@ -149,7 +199,6 @@ export class Konzum implements Scrapper {
         } as LocalizableString,
         fromHour: workHour.from_hour ? new Date(workHour.from_hour) : null,
         toHour: workHour.to_hour ? new Date(workHour.to_hour) : null,
-        locationId,
       };
 
       await tx

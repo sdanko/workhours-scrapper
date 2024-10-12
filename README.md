@@ -1,4 +1,4 @@
-# Workhours Scrappers
+# Workhours Scrapper
 
 Key features:
 

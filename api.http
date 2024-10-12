@@ -1,0 +1,2 @@
+### Scrape
+GET {{workHoursScrapperBaseUri}}/api/scrape
