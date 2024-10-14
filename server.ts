@@ -41,7 +41,7 @@ const server = Bun.serve({
     if (method === 'GET' && pathname === '/api/scrape') {
       try {
         for (const scrapper of scrappers) {
-          await scrapper.fetch(db);
+          await scrapper.fetch(db, browser);
         }
 
         exit();

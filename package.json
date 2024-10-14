@@ -1,7 +1,7 @@
 {
   "name": "workhours-scrapper",
   "scripts": {
-    "start": "bun --env-file .env server.ts",
+    "start": "bun server.ts",
     "start:local": "bun --hot --env-file .env.local server.ts",
     "lint": "eslint . --fix"
   },

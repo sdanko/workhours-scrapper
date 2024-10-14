@@ -61,7 +61,6 @@ export class Konzum implements Scrapper {
 
             const upsertValues: Partial<Location> = {
               name: location.name,
-              address: location.address,
               phoneNumber: location.phone_number,
               description: location.type.join(),
               openThisSunday: location.open_this_sunday,
@@ -78,7 +77,6 @@ export class Konzum implements Scrapper {
                 target: locations.id,
                 set: {
                   name: upsertValues.name,
-                  address: upsertValues.address,
                   phoneNumber: upsertValues.phoneNumber,
                   description: upsertValues.description,
                   openThisSunday: upsertValues.openThisSunday,

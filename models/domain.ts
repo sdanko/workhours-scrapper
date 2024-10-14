@@ -1,8 +1,9 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../db/schema';
+import { Browser } from 'puppeteer-core';
 
 export interface Scrapper {
-  fetch(db: NodePgDatabase<typeof schema>): Promise<void>;
+  fetch(db: NodePgDatabase<typeof schema>, browser: Browser): Promise<void>;
 }
 
 export type LocalizableString = {
