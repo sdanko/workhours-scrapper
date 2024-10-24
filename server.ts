@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Scrapper } from './models/domain';
 import { Konzum } from './scrappers/konzum';
 import * as schema from './db/schema';
+import { Studenac } from './scrappers/studenac';
 
 // fetch configuration fron environment variables
 const PORT = process.env.PORT || 3000;
@@ -28,7 +29,7 @@ const pool = new pg.Pool({
 });
 const db = drizzle(pool, { schema, logger: true });
 
-const scrappers: Scrapper[] = [new Konzum()];
+const scrappers: Scrapper[] = [new Studenac()];
 
 // process HTTP requests
 const server = Bun.serve({

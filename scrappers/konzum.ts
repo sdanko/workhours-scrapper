@@ -2,12 +2,14 @@ import axios from 'axios';
 import { cities, locations, retailChains, workHours } from '../db/schema';
 import { sql, and, eq, ExtractTablesWithRelations } from 'drizzle-orm';
 import { extractCity } from '../utils/common';
+import { saveDataToPostgres } from '../utils/db';
 import {
   KonzumData,
-  KonzumLocations,
-  KonzumWorkhour,
+  KonzumLocation,
+  KonzumWorkHour,
   LocalizableString,
   Location,
+  LocationWithWorkhours,
   Scrapper,
   WorkHour,
 } from '../models/domain';
@@ -27,13 +29,40 @@ export class Konzum implements Scrapper {
       const response = await axios.get(
         'https://trgovine.konzum.hr/api/locations/'
       );
-      const data: KonzumData = response.data;
 
-      // Parse the response and save data to Postgres
-      await this.saveDataToPostgres(db, data);
+      const data: KonzumData = response.data;
+      const locations: Partial<LocationWithWorkhours>[] = this.mapLocations(
+        data.locations
+      );
+
+      await saveDataToPostgres(db, locations, konzumName);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
+  }
+
+  mapLocations(locations: KonzumLocation[]): Partial<LocationWithWorkhours>[] {
+    return locations.map((location) => {
+      const konzumWorkHours: KonzumWorkHour[] = JSON.parse(location.work_hours);
+
+      return {
+        name: location.name,
+        address: location.address,
+        phoneNumber: location.phone_number,
+        description: location.type.join(),
+        openThisSunday: location.open_this_sunday,
+        workHours: konzumWorkHours.map((workHour) => {
+          return {
+            name: {
+              value: workHour.name,
+              locale: 'hr_HR',
+            } as LocalizableString,
+            fromHour: workHour.from_hour ? new Date(workHour.from_hour) : null,
+            toHour: workHour.to_hour ? new Date(workHour.to_hour) : null,
+          };
+        }),
+      };
+    });
   }
 
   async saveDataToPostgres(
@@ -60,7 +89,10 @@ export class Konzum implements Scrapper {
               );
 
             const upsertValues: Partial<Location> = {
+              retailChainId,
+              cityId,
               name: location.name,
+              address: location.address,
               phoneNumber: location.phone_number,
               description: location.type.join(),
               openThisSunday: location.open_this_sunday,
@@ -70,7 +102,10 @@ export class Konzum implements Scrapper {
               .insert(locations)
               .values(
                 existigLocation?.id
-                  ? { id: existigLocation.id, ...upsertValues }
+                  ? {
+                      id: existigLocation.id,
+                      ...upsertValues,
+                    }
                   : { ...upsertValues }
               )
               .onConflictDoUpdate({
@@ -85,7 +120,7 @@ export class Konzum implements Scrapper {
               .returning({ insertedId: locations.id });
 
             const locationId = insertResult.insertedId;
-            const workHours: KonzumWorkhour[] = JSON.parse(location.work_hours);
+            const workHours: KonzumWorkHour[] = JSON.parse(location.work_hours);
 
             await this.saveWorkhoursForLocation(
               tx,
@@ -114,7 +149,7 @@ export class Konzum implements Scrapper {
   }
 
   private async saveCity(
-    location: KonzumLocations,
+    location: KonzumLocation,
     tx: PgTransaction<
       NodePgQueryResultHKT,
       typeof schema,
@@ -172,7 +207,7 @@ export class Konzum implements Scrapper {
       typeof schema,
       ExtractTablesWithRelations<typeof schema>
     >,
-    workHoursValues: KonzumWorkhour[],
+    workHoursValues: KonzumWorkHour[],
     locationId: number,
     locale: string,
     translationsMap: { [key: string]: string } | null = null
@@ -189,6 +224,7 @@ export class Konzum implements Scrapper {
         );
 
       const upsertValues: Partial<WorkHour> = {
+        locationId,
         name: {
           value: translationsMap
             ? translationsMap[workHour.name.toLowerCase()]
@@ -209,7 +245,6 @@ export class Konzum implements Scrapper {
         .onConflictDoUpdate({
           target: workHours.id,
           set: {
-            name: upsertValues.name,
             fromHour: upsertValues.fromHour,
             toHour: upsertValues.toHour,
           },

@@ -36,10 +36,10 @@ export type WorkHour = {
 };
 
 export type KonzumData = {
-  locations: KonzumLocations[];
+  locations: KonzumLocation[];
 };
 
-export type KonzumLocations = {
+export type KonzumLocation = {
   address: string;
   name: string;
   phone_number: string;
@@ -48,8 +48,17 @@ export type KonzumLocations = {
   work_hours: string;
 };
 
-export type KonzumWorkhour = {
+export type KonzumWorkHour = {
   name: string;
   from_hour: string;
   to_hour: string;
+};
+
+export type LocationWithWorkhours = {
+  address: string;
+  name: string;
+  openThisSunday: boolean;
+  phoneNumber: string;
+  description: string;
+  workHours: Partial<WorkHour>[];
 };
