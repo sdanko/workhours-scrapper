@@ -1,2 +1,8 @@
 ### Scrape
 GET {{workHoursScrapperBaseUri}}/api/scrape
+
+### Scrape Studenac
+GET {{workHoursScrapperBaseUri}}/api/scrape/studenac
+
+### Scrape Kaufland
+GET {{workHoursScrapperBaseUri}}/api/scrape/kaufland

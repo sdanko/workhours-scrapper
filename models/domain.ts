@@ -30,8 +30,9 @@ export type Location = {
 export type WorkHour = {
   id: number;
   name: LocalizableString;
-  fromHour: Date | null;
-  toHour: Date | null;
+  fromHour: string | null;
+  toHour: string | null;
+  date: string | null;
   locationId: number;
 };
 

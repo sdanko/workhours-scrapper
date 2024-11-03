@@ -196,7 +196,8 @@ function translateToLocale(
         value: translationsMap[workHour.name!.value.toLowerCase()],
         locale,
       },
-      ...workHour,
+      fromHour: workHour.fromHour,
+      toHour: workHour.toHour,
     };
   });
 }

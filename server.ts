@@ -5,6 +5,7 @@ import { Scrapper } from './models/domain';
 import { Konzum } from './scrappers/konzum';
 import * as schema from './db/schema';
 import { Studenac } from './scrappers/studenac';
+import { Kaufland } from './scrappers/kaufland';
 
 // fetch configuration fron environment variables
 const PORT = process.env.PORT || 3000;
@@ -26,10 +27,11 @@ const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 10000,
+  keepAlive: true,
 });
 const db = drizzle(pool, { schema, logger: true });
 
-const scrappers: Scrapper[] = [new Studenac()];
+const scrappers: Scrapper[] = [new Konzum(), new Kaufland()];
 
 // process HTTP requests
 const server = Bun.serve({
@@ -40,38 +42,71 @@ const server = Bun.serve({
     const { pathname } = new URL(request.url);
 
     if (method === 'GET' && pathname === '/api/scrape') {
-      try {
-        for (const scrapper of scrappers) {
-          await scrapper.fetch(db, browser);
-        }
-
-        exit();
-
-        return new Response('Done', { status: 200 });
-      } catch (error: unknown) {
-        // handle errors
-        if (error instanceof Error) {
-          console.error(error.stack || error);
-          return new Response(`<pre>${error.stack || error}</pre>`, {
-            status: 500,
-            headers: { 'Content-Type': 'text/html' },
-          });
-        } else {
-          // Handle non-Error exceptions (rare but possible)
-          console.error(String(error));
-          return new Response(`<pre>${String(error)}</pre>`, {
-            status: 500,
-            headers: { 'Content-Type': 'text/html' },
-          });
-        }
-      } finally {
-        console.log(`Printer server listening on port ${server.port}`);
-      }
+      triggerScrappers();
+      return new Response('Scraping triggered', { status: 200 });
+    }
+    if (method === 'GET' && pathname === '/api/scrape/studenac') {
+      triggerStudenacScrapper();
+      return new Response('Scraping Studenac triggered', { status: 200 });
+    }
+    if (method === 'GET' && pathname === '/api/scrape/kaufland') {
+      triggerKauflandScrapper();
+      return new Response('Scraping Kaufland triggered', { status: 200 });
     }
 
     return new Response('Not Found', { status: 404 });
   },
 });
+
+async function triggerScrappers() {
+  try {
+    for (const scrapper of scrappers) {
+      await scrapper.fetch(db, browser);
+    }
+  } catch (error: unknown) {
+    // handle errors
+    if (error instanceof Error) {
+      console.error(error.stack || error);
+    } else {
+      // Handle non-Error exceptions (rare but possible)
+      console.error(String(error));
+    }
+  } finally {
+    exit();
+  }
+}
+
+async function triggerStudenacScrapper() {
+  try {
+    await new Studenac().fetch(db);
+  } catch (error: unknown) {
+    // handle errors
+    if (error instanceof Error) {
+      console.error(error.stack || error);
+    } else {
+      // Handle non-Error exceptions (rare but possible)
+      console.error(String(error));
+    }
+  } finally {
+    exit();
+  }
+}
+
+async function triggerKauflandScrapper() {
+  try {
+    await new Kaufland().fetch(db);
+  } catch (error: unknown) {
+    // handle errors
+    if (error instanceof Error) {
+      console.error(error.stack || error);
+    } else {
+      // Handle non-Error exceptions (rare but possible)
+      console.error(String(error));
+    }
+  } finally {
+    exit();
+  }
+}
 
 console.log(`Server listening on port ${server.port}`);
 

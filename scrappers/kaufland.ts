@@ -1,0 +1,142 @@
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { Scrapper, LocationWithWorkhours, WorkHour } from '../models/domain';
+import * as schema from '../db/schema';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { saveDataToPostgres } from '../utils/db';
+import {
+  getDateFromString,
+  throttleAsync,
+  weekDays,
+  weekDaysShort,
+} from '../utils/common';
+
+const kauflandName = 'Kaufland';
+
+export class Kaufland implements Scrapper {
+  async fetch(db: NodePgDatabase<typeof schema>): Promise<void> {
+    try {
+      const response = await axios.get('https://www.kaufland.hr/.sitemap.xml');
+      const $ = cheerio.load(response.data, { xmlMode: true });
+
+      const locations: string[] = [];
+      const locationResolvers: Promise<Partial<LocationWithWorkhours>>[] = [];
+
+      // Find all <loc> tags and filter URLs containing "poslovnica"
+      $('url loc').each((_, loc) => {
+        const url = $(loc).text();
+        if (url.includes('poslovnica')) {
+          locations.push(url);
+        }
+      });
+
+      for (const location of [locations[0]]) {
+        locationResolvers.push(this.resolveLocation(location));
+      }
+
+      const resolvedLocations = await throttleAsync(locationResolvers, 10);
+      console.log(resolvedLocations);
+      console.log(resolvedLocations[0].workHours);
+      // await saveDataToPostgres(db, resolvedLocations, kauflandName);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+    }
+  }
+
+  async resolveLocation(link: string): Promise<Partial<LocationWithWorkhours>> {
+    return axios.get(link).then((response) => {
+      const $ = cheerio.load(response.data);
+
+      const name = $('div.m-store-info__name').text();
+      const street = $('div.m-store-info__street').text();
+      const city = $('div.m-store-info__city').text();
+      const address = `${street}, ${city}`;
+      const phoneNumber = $('div.m-store-info__telephone').text();
+      const startDate = this.getStartDate();
+
+      const hoursPerDay: { [key: string]: string } = {};
+      // Loop through each <dt> element
+      $('dl.m-store-info__shophours-data dt.m-store-info__day').each(
+        (_, element) => {
+          // Get the corresponding hours (text inside the next <dd>)
+          const hours = $(element)
+            .next('dd.m-store-info__hours')
+            .text()
+            .replace('h', '')
+            .trim();
+
+          // Get the day (text inside <dt>)
+          const daySpanText = $(element).text().trim();
+          let days: string[] = [];
+
+          if (daySpanText.includes('-')) {
+            const [startDay, endDay] = daySpanText.split('-');
+            days = this.getDaysFromSpan(
+              startDay.trim(),
+              endDay.trim().replace(':', '')
+            );
+          } else if (weekDaysShort.indexOf(daySpanText) !== -1) {
+            days.push(weekDays[weekDaysShort.indexOf(daySpanText)]);
+          }
+
+          for (const day of days) {
+            hoursPerDay[day] = hours;
+          }
+        }
+      );
+
+      const workHours: Partial<WorkHour>[] = [];
+      for (const day of weekDays) {
+        if (day in hoursPerDay) {
+          const hours = hoursPerDay[day];
+          const fromHour = getDateFromString(
+            hours.split('-')[0],
+            day,
+            startDate
+          );
+          const toHour = getDateFromString(hours.split('-')[1], day, startDate);
+          workHours.push({
+            name: { value: day, locale: 'hr_HR' },
+            fromHour,
+            toHour,
+          });
+        } else {
+          workHours.push({
+            name: { value: day, locale: 'hr_HR' },
+            fromHour: null,
+            toHour: null,
+          });
+        }
+      }
+
+      return {
+        name,
+        address,
+        phoneNumber,
+        workHours,
+        openThisSunday: workHours.some(
+          (x) =>
+            x.name?.value === 'Nedjelja' &&
+            x.fromHour !== null &&
+            x.toHour !== null
+        ),
+      };
+    });
+  }
+
+  getDaysFromSpan(startDay: string, endDay: string): string[] {
+    return weekDays.slice(
+      weekDaysShort.indexOf(startDay),
+      weekDaysShort.indexOf(endDay) + 1
+    );
+  }
+
+  getStartDate(): Date {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const difference = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust if today is Sunday (0)
+
+    today.setDate(today.getDate() + difference);
+    return today;
+  }
+}
