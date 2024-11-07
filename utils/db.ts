@@ -8,7 +8,7 @@ import { locations, cities, retailChains, workHours } from '../db/schema';
 import { Location, WorkHour, LocationWithWorkhours } from '../models/domain';
 import { extractCity } from './common';
 import * as schema from '../db/schema';
-import { dayTranslationsEn } from '../translations/days-of-the-week';
+import { dayTranslationsEn } from '../translations/daysOfTheWeek';
 
 export async function saveDataToPostgres(
   db: NodePgDatabase<typeof schema>,
@@ -157,8 +157,9 @@ async function saveWorkhoursForLocation(
       .from(workHours)
       .where(
         and(
-          sql`${workHours.name}->>'value' = ${workHour.name?.value} AND ${workHours.name}->>'locale' = ${workHour.name?.locale}`,
-          eq(workHours.locationId, locationId)
+          sql`${workHours.name}->>'locale' = ${workHour.name?.locale}`,
+          eq(workHours.locationId, locationId),
+          eq(workHours.date, workHour.date as string)
         )
       );
 
@@ -167,6 +168,7 @@ async function saveWorkhoursForLocation(
       name: workHour.name,
       fromHour: workHour.fromHour,
       toHour: workHour.toHour,
+      date: workHour.date,
     };
 
     await tx
@@ -198,6 +200,7 @@ function translateToLocale(
       },
       fromHour: workHour.fromHour,
       toHour: workHour.toHour,
+      date: workHour.date,
     };
   });
 }

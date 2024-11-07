@@ -56,45 +56,7 @@ export async function throttleAsync<T>(
   return result;
 }
 
-export function getDateFromString(
-  timestring: string,
-  day: string,
-  startDate: Date | undefined
-): Date | null {
-  if (!timestring) {
-    return null;
-  }
-
-  const currentDate = new Date();
-  const [hours, minutes] = timestring.split(':').map(Number);
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return null;
-  }
-
-  if (!startDate) {
-    currentDate.setHours(hours);
-    currentDate.setMinutes(minutes);
-
-    return currentDate;
-  }
-
-  const currentDayIndex = getAdjustedDay(currentDate);
-  const dayIndex = weekDays.indexOf(day);
-  const dayDiff = getDifferenceInDays(startDate, currentDate);
-
-  const addDays = dayDiff + (dayIndex - currentDayIndex);
-
-  const dayInMilis = 1000 * 60 * 60 * 24;
-  const dateTimestamp = startDate.getTime() + dayInMilis * addDays;
-  const date = new Date(dateTimestamp);
-  date.setHours(hours);
-  date.setMinutes(minutes);
-
-  return date;
-}
-
-export function getDayDateInCurrentWeek(day: string): Date | null {
+export function getDayDateInCurrentWeek(day: string): Date {
   const currentDate = new Date();
   const mondayDate = getMondayDate(currentDate);
   const currentDayIndex = getAdjustedDay(currentDate);
@@ -118,6 +80,16 @@ export function getDifferenceInDays(date1: Date, date2: Date): number {
   const diffInDays = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
 
   return diffInDays;
+}
+
+export function getIsoStringDateAndTime(date: Date): string[] {
+  // Extract the date part (YYYY-MM-DD)
+  const datePart = date.toISOString().split('T')[0];
+
+  // Extract the time part (HH:MM:SS)
+  const timePart = date.toTimeString().split(' ')[0];
+
+  return [timePart, datePart];
 }
 
 function getMondayDate(today: Date): Date {

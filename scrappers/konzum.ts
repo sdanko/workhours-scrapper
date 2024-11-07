@@ -10,10 +10,14 @@ import {
   Scrapper,
 } from '../models/domain';
 import { saveDataToPostgres } from '../utils/db';
-
-const konzumName = 'Konzum';
+import {
+  getDayDateInCurrentWeek,
+  getIsoStringDateAndTime,
+} from '../utils/common';
 
 export class Konzum implements Scrapper {
+  retailName = 'Konzum';
+
   async fetch(db: NodePgDatabase<typeof schema>) {
     try {
       const response = await axios.get(
@@ -25,7 +29,7 @@ export class Konzum implements Scrapper {
         data.locations
       );
 
-      await saveDataToPostgres(db, locations, konzumName);
+      await saveDataToPostgres(db, locations, this.retailName);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
@@ -42,13 +46,26 @@ export class Konzum implements Scrapper {
         description: location.type.join(),
         openThisSunday: location.open_this_sunday,
         workHours: konzumWorkHours.map((workHour) => {
+          const [fromHourTime, date] = workHour.from_hour
+            ? getIsoStringDateAndTime(new Date(workHour.from_hour))
+            : [null, null];
+
+          const [toHourTime] = workHour.to_hour
+            ? getIsoStringDateAndTime(new Date(workHour.to_hour))
+            : [null];
+
           return {
             name: {
               value: workHour.name,
               locale: 'hr_HR',
             } as LocalizableString,
-            fromHour: workHour.from_hour ? new Date(workHour.from_hour) : null,
-            toHour: workHour.to_hour ? new Date(workHour.to_hour) : null,
+            fromHour: fromHourTime,
+            toHour: toHourTime,
+            date:
+              date ??
+              getIsoStringDateAndTime(
+                getDayDateInCurrentWeek(workHour.name)
+              )[1],
           };
         }),
       };

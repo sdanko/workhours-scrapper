@@ -1,6 +1,9 @@
 ### Scrape
 GET {{workHoursScrapperBaseUri}}/api/scrape
 
+### Scrape Konzum
+GET {{workHoursScrapperBaseUri}}/api/scrape/konzum
+
 ### Scrape Studenac
 GET {{workHoursScrapperBaseUri}}/api/scrape/studenac
 

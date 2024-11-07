@@ -59,6 +59,7 @@ export const workHours = pgTable(
     return {
       locationIdIdx: index('locationId_idx').on(table.locationId),
       dateIdx: index('date_idx').on(table.date),
+      nameIdx: index('name_idx').using('gin', table.name),
     };
   }
 );

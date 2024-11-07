@@ -5,15 +5,16 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { saveDataToPostgres } from '../utils/db';
 import {
-  getDateFromString,
+  getIsoStringDateAndTime,
+  getDayDateInCurrentWeek,
   throttleAsync,
   weekDays,
   weekDaysShort,
 } from '../utils/common';
 
-const kauflandName = 'Kaufland';
-
 export class Kaufland implements Scrapper {
+  retailName = 'Kaufland';
+
   async fetch(db: NodePgDatabase<typeof schema>): Promise<void> {
     try {
       const response = await axios.get('https://www.kaufland.hr/.sitemap.xml');
@@ -30,14 +31,12 @@ export class Kaufland implements Scrapper {
         }
       });
 
-      for (const location of [locations[0]]) {
+      for (const location of locations) {
         locationResolvers.push(this.resolveLocation(location));
       }
 
       const resolvedLocations = await throttleAsync(locationResolvers, 10);
-      console.log(resolvedLocations);
-      console.log(resolvedLocations[0].workHours);
-      // await saveDataToPostgres(db, resolvedLocations, kauflandName);
+      await saveDataToPostgres(db, resolvedLocations, this.retailName);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
@@ -52,7 +51,6 @@ export class Kaufland implements Scrapper {
       const city = $('div.m-store-info__city').text();
       const address = `${street}, ${city}`;
       const phoneNumber = $('div.m-store-info__telephone').text();
-      const startDate = this.getStartDate();
 
       const hoursPerDay: { [key: string]: string } = {};
       // Loop through each <dt> element
@@ -75,8 +73,14 @@ export class Kaufland implements Scrapper {
               startDay.trim(),
               endDay.trim().replace(':', '')
             );
-          } else if (weekDaysShort.indexOf(daySpanText) !== -1) {
-            days.push(weekDays[weekDaysShort.indexOf(daySpanText)]);
+          } else if (
+            weekDaysShort.indexOf(daySpanText.trim().replace(':', '')) !== -1
+          ) {
+            days.push(
+              weekDays[
+                weekDaysShort.indexOf(daySpanText.trim().replace(':', ''))
+              ]
+            );
           }
 
           for (const day of days) {
@@ -87,24 +91,24 @@ export class Kaufland implements Scrapper {
 
       const workHours: Partial<WorkHour>[] = [];
       for (const day of weekDays) {
+        const [_, date] = getIsoStringDateAndTime(getDayDateInCurrentWeek(day));
         if (day in hoursPerDay) {
           const hours = hoursPerDay[day];
-          const fromHour = getDateFromString(
-            hours.split('-')[0],
-            day,
-            startDate
-          );
-          const toHour = getDateFromString(hours.split('-')[1], day, startDate);
+          const [fromHour, toHour] = hours.includes('-')
+            ? hours.split('-')
+            : [null, null];
           workHours.push({
             name: { value: day, locale: 'hr_HR' },
             fromHour,
             toHour,
+            date,
           });
         } else {
           workHours.push({
             name: { value: day, locale: 'hr_HR' },
             fromHour: null,
             toHour: null,
+            date,
           });
         }
       }
@@ -129,14 +133,5 @@ export class Kaufland implements Scrapper {
       weekDaysShort.indexOf(startDay),
       weekDaysShort.indexOf(endDay) + 1
     );
-  }
-
-  getStartDate(): Date {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const difference = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust if today is Sunday (0)
-
-    today.setDate(today.getDate() + difference);
-    return today;
   }
 }

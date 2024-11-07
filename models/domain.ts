@@ -3,6 +3,7 @@ import * as schema from '../db/schema';
 import { Browser } from 'puppeteer-core';
 
 export interface Scrapper {
+  retailName: string;
   fetch(db: NodePgDatabase<typeof schema>, browser: Browser): Promise<void>;
 }
 

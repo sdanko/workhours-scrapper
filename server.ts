@@ -6,6 +6,7 @@ import { Konzum } from './scrappers/konzum';
 import * as schema from './db/schema';
 import { Studenac } from './scrappers/studenac';
 import { Kaufland } from './scrappers/kaufland';
+import { client, connectRedis } from './redisClient';
 
 // fetch configuration fron environment variables
 const PORT = process.env.PORT || 3000;
@@ -29,7 +30,13 @@ const pool = new pg.Pool({
   idleTimeoutMillis: 10000,
   keepAlive: true,
 });
+
 const db = drizzle(pool, { schema, logger: true });
+
+// Initialize Redis connection
+connectRedis().catch((err) =>
+  console.error('Failed to connect to Redis:', err)
+);
 
 const scrappers: Scrapper[] = [new Konzum(), new Kaufland()];
 
@@ -44,6 +51,10 @@ const server = Bun.serve({
     if (method === 'GET' && pathname === '/api/scrape') {
       triggerScrappers();
       return new Response('Scraping triggered', { status: 200 });
+    }
+    if (method === 'GET' && pathname === '/api/scrape/konzum') {
+      triggerKonzumScrapper();
+      return new Response('Scraping Konzum triggered', { status: 200 });
     }
     if (method === 'GET' && pathname === '/api/scrape/studenac') {
       triggerStudenacScrapper();
@@ -62,7 +73,30 @@ async function triggerScrappers() {
   try {
     for (const scrapper of scrappers) {
       await scrapper.fetch(db, browser);
+
+      const hrLocaleKey = `retail:${scrapper.retailName.toLowerCase()}|locale:hr_HR`;
+      await client.del(hrLocaleKey);
     }
+  } catch (error: unknown) {
+    // handle errors
+    if (error instanceof Error) {
+      console.error(error.stack || error);
+    } else {
+      // Handle non-Error exceptions (rare but possible)
+      console.error(String(error));
+    }
+  } finally {
+    exit();
+  }
+}
+
+async function triggerKonzumScrapper() {
+  try {
+    const scrapper = new Konzum();
+    await scrapper.fetch(db);
+
+    const hrLocaleKey = `retail:${scrapper.retailName.toLowerCase()}|locale:hr_HR`;
+    await client.del(hrLocaleKey);
   } catch (error: unknown) {
     // handle errors
     if (error instanceof Error) {
@@ -78,7 +112,11 @@ async function triggerScrappers() {
 
 async function triggerStudenacScrapper() {
   try {
-    await new Studenac().fetch(db);
+    const scrapper = new Studenac();
+    await scrapper.fetch(db);
+
+    const hrLocaleKey = `retail:${scrapper.retailName.toLowerCase()}|locale:hr_HR`;
+    await client.del(hrLocaleKey);
   } catch (error: unknown) {
     // handle errors
     if (error instanceof Error) {
@@ -94,7 +132,11 @@ async function triggerStudenacScrapper() {
 
 async function triggerKauflandScrapper() {
   try {
-    await new Kaufland().fetch(db);
+    const scrapper = new Kaufland();
+    await scrapper.fetch(db);
+
+    const hrLocaleKey = `retail:${scrapper.retailName.toLowerCase()}|locale:hr_HR`;
+    await client.del(hrLocaleKey);
   } catch (error: unknown) {
     // handle errors
     if (error instanceof Error) {
