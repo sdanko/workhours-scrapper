@@ -28,7 +28,13 @@ connectRedis().catch((err) =>
   console.error('Failed to connect to Redis:', err)
 );
 
-const scrappers: Scrapper[] = [new Konzum(), new Kaufland(), new Eurospin()];
+const scrappers: Scrapper[] = [
+  new Konzum(),
+  new Kaufland(),
+  new Eurospin(),
+  new Spar(),
+  new Lidl(),
+];
 
 // process HTTP requests
 const server = Bun.serve({

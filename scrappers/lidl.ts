@@ -56,7 +56,6 @@ export class Lidl implements Scrapper {
     if (!response) {
       return null;
     }
-
     const $ = cheerio.load(response);
 
     const name = $('h1.lirt-o-store-detail-card__headline').text();

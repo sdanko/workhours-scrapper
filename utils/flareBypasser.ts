@@ -7,15 +7,12 @@ export async function bypassFlare(url: string) {
     maxTimeout: 60000,
   };
 
-  const initialResponse = await axios.post(
-    'http://localhost:20080/v1',
-    postData,
-    {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  const flareUrl = process.env.FLARE_BYPASSER_URL as string;
+  const initialResponse = await axios.post(flareUrl, postData, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 
   const responseData = initialResponse.data;
 

@@ -1,22 +1,21 @@
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Scrapper, LocationWithWorkhours, WorkHour } from '../models/domain';
 import * as schema from '../db/schema';
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { saveDataToPostgres } from '../utils/db';
-import { throttleAsync } from '../utils/common';
 import {
   getIsoStringDateAndTime,
   getDayDateInCurrentWeek,
 } from '../utils/dates';
 import { translateToEn } from '../translations/daysOfTheWeek';
+import { bypassFlare } from '../utils/flareBypasser';
 
 export class Studenac implements Scrapper {
   retailName = 'Studenac';
 
   async fetch(db: NodePgDatabase<typeof schema>): Promise<void> {
     try {
-      const response = await axios.get('https://www.studenac.hr/trgovine');
+      const response = await bypassFlare('https://www.studenac.hr/trgovine');
       const $ = cheerio.load(response.data);
 
       const locations: string[] = [];
@@ -33,20 +32,28 @@ export class Studenac implements Scrapper {
         }
       });
 
+      const resolvedLocations: Partial<LocationWithWorkhours>[] = [];
       for (const location of locations) {
-        locationResolvers.push(this.resolveLocation(location));
+        const resolvedLocation = await this.resolveLocation(location);
+        if (resolvedLocation) {
+          resolvedLocations.push(resolvedLocation);
+        }
       }
 
-      const resolvedLocations = await throttleAsync(locationResolvers, 10);
       await this.saveDataInBatches(resolvedLocations, db, 100);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
   }
 
-  async resolveLocation(link: string): Promise<Partial<LocationWithWorkhours>> {
-    const response = await axios.get(link);
-    const $ = cheerio.load(response.data);
+  async resolveLocation(
+    link: string
+  ): Promise<Partial<LocationWithWorkhours> | null> {
+    const response = await bypassFlare(link);
+    if (!response) {
+      return null;
+    }
+    const $ = cheerio.load(response);
 
     const name = $('h1.toparea__heading').text();
     const address = $('div.marketsingle__meta h2').text();

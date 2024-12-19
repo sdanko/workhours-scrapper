@@ -23,7 +23,7 @@ GET {{workHoursScrapperBaseUri}}/api/scrape/spar
 GET {{workHoursScrapperBaseUri}}/api/scrape/lidl
 
 ### Flare Bypasser
-POST http://localhost:20080/v1
+POST http://flare-bypasser.flycast/v1
 Content-Type: application/json
 
 {
