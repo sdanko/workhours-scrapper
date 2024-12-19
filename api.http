@@ -1,3 +1,6 @@
+### Clear cache
+GET {{workHoursScrapperBaseUri}}/api/clear-cache
+
 ### Scrape
 GET {{workHoursScrapperBaseUri}}/api/scrape
 
@@ -9,3 +12,22 @@ GET {{workHoursScrapperBaseUri}}/api/scrape/studenac
 
 ### Scrape Kaufland
 GET {{workHoursScrapperBaseUri}}/api/scrape/kaufland
+
+### Scrape Eurospin
+GET {{workHoursScrapperBaseUri}}/api/scrape/eurospin
+
+### Scrape Spar
+GET {{workHoursScrapperBaseUri}}/api/scrape/spar
+
+### Scrape Lidl
+GET {{workHoursScrapperBaseUri}}/api/scrape/lidl
+
+### Flare Bypasser
+POST http://localhost:20080/v1
+Content-Type: application/json
+
+{
+  "cmd": "request.get",
+  "url": "https://www.spar.hr/lokacije/spar-supermarket-zagreb-10000-tina-ujevia-17",
+  "maxTimeout": 60000
+}

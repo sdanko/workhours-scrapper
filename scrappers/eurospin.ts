@@ -4,33 +4,29 @@ import * as schema from '../db/schema';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { saveDataToPostgres } from '../utils/db';
-import { throttleAsync } from '../utils/common';
+import { throttleAsync, cleanHtmlTags, capitalize } from '../utils/common';
 import {
   getIsoStringDateAndTime,
   getDayDateInCurrentWeek,
 } from '../utils/dates';
 import { translateToEn } from '../translations/daysOfTheWeek';
 
-export class Studenac implements Scrapper {
-  retailName = 'Studenac';
+export class Eurospin implements Scrapper {
+  retailName = 'Eurospin';
 
   async fetch(db: NodePgDatabase<typeof schema>): Promise<void> {
     try {
-      const response = await axios.get('https://www.studenac.hr/trgovine');
-      const $ = cheerio.load(response.data);
+      const response = await axios.get(
+        'https://www.eurospin.hr/store-sitemap.xml'
+      );
+      const $ = cheerio.load(response.data, { xmlMode: true });
 
       const locations: string[] = [];
       const locationResolvers: Promise<Partial<LocationWithWorkhours>>[] = [];
 
-      // Find the ul with id "storeList"
-      $('#storeList li').each((_, element) => {
-        // Find the a tag inside the div with class "card__cta" in each li
-        const link = $(element).find('div.card__cta a').attr('href');
-
-        // If the link exists, push it to the array
-        if (link) {
-          locations.push(link);
-        }
+      $('url loc').each((_, loc) => {
+        const url = $(loc).text();
+        locations.push(url);
       });
 
       for (const location of locations) {
@@ -38,7 +34,7 @@ export class Studenac implements Scrapper {
       }
 
       const resolvedLocations = await throttleAsync(locationResolvers, 10);
-      await this.saveDataInBatches(resolvedLocations, db, 100);
+      await saveDataToPostgres(db, resolvedLocations, this.retailName);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
@@ -48,19 +44,23 @@ export class Studenac implements Scrapper {
     const response = await axios.get(link);
     const $ = cheerio.load(response.data);
 
-    const name = $('h1.toparea__heading').text();
-    const address = $('div.marketsingle__meta h2').text();
+    const name = $('section.sn_store_brochure h1').text().trim();
+
+    const container = $('div.col-xs-12.col-sm-6').html();
+    if (container === null) {
+      throw Error('Container element not found');
+    }
+
+    const address = container.split('</h1>')[1]?.split('<br>')[0]?.trim();
 
     const workHours: Partial<WorkHour>[] = [];
+    const workingHoursText = container
+      .split('</h2>')[1]
+      ?.split('<div class="row sn_store_brochure_lists">')[0];
 
-    // Loop through each li inside .marketsingle__column ul
-    $('div.marketsingle__column ul li').each((index, element) => {
-      // Get the text for the day (text before the strong tag)
-      const day = $(element).text().split(':')[0].trim();
-
-      // Get the working hours from the strong tag
-      const hours = $(element).find('strong').text().trim();
-
+    workingHoursText?.split('<br>').forEach((line) => {
+      const day = this.normalizeDayString(line.slice(0, line.indexOf(':')));
+      const hours = cleanHtmlTags(line.slice(line.indexOf(':') + 1));
       if (day && hours) {
         const [_, date] = getIsoStringDateAndTime(getDayDateInCurrentWeek(day));
         const [fromHour, toHour] = hours.includes('-')
@@ -86,15 +86,8 @@ export class Studenac implements Scrapper {
     };
   }
 
-  async saveDataInBatches(
-    data: Partial<LocationWithWorkhours>[],
-    db: NodePgDatabase<typeof schema>,
-    batchSize: number
-  ): Promise<void> {
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-
-      await saveDataToPostgres(db, batch, this.retailName);
-    }
+  normalizeDayString(day: string): string {
+    const cleanString = cleanHtmlTags(day);
+    return capitalize(cleanString);
   }
 }

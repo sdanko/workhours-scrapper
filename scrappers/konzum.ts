@@ -13,7 +13,8 @@ import { saveDataToPostgres } from '../utils/db';
 import {
   getDayDateInCurrentWeek,
   getIsoStringDateAndTime,
-} from '../utils/common';
+} from '../utils/dates';
+import { translateToEn } from '../translations/daysOfTheWeek';
 
 export class Konzum implements Scrapper {
   retailName = 'Konzum';
@@ -56,8 +57,8 @@ export class Konzum implements Scrapper {
 
           return {
             name: {
-              value: workHour.name,
-              locale: 'hr_HR',
+              hr: workHour.name,
+              en: translateToEn(workHour.name),
             } as LocalizableString,
             fromHour: fromHourTime,
             toHour: toHourTime,

@@ -8,3 +8,7 @@ export const dayTranslationsEn: { [key: string]: string } = {
   subota: 'Saturday',
   nedjelja: 'Sunday',
 };
+
+export function translateToEn(value: string): string {
+  return dayTranslationsEn[value.toLowerCase()];
+}

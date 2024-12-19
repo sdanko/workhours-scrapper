@@ -11,8 +11,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export type LocalizableString = {
-  locale: string;
-  value: string;
+  hr: string;
+  en: string;
 };
 
 export const cities = pgTable('city', {

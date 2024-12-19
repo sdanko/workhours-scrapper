@@ -1,4 +1,4 @@
-import { and, eq, ExtractTablesWithRelations, sql } from 'drizzle-orm';
+import { and, eq, ExtractTablesWithRelations } from 'drizzle-orm';
 import {
   NodePgDatabase,
   NodePgQueryResultHKT,
@@ -8,7 +8,6 @@ import { locations, cities, retailChains, workHours } from '../db/schema';
 import { Location, WorkHour, LocationWithWorkhours } from '../models/domain';
 import { extractCity } from './common';
 import * as schema from '../db/schema';
-import { dayTranslationsEn } from '../translations/daysOfTheWeek';
 
 export async function saveDataToPostgres(
   db: NodePgDatabase<typeof schema>,
@@ -69,11 +68,6 @@ export async function saveDataToPostgres(
 
           if (location.workHours) {
             await saveWorkhoursForLocation(tx, location.workHours, locationId);
-            await saveWorkhoursForLocation(
-              tx,
-              translateToLocale(location.workHours, 'en_US', dayTranslationsEn),
-              locationId
-            );
           }
         }
       },
@@ -157,7 +151,6 @@ async function saveWorkhoursForLocation(
       .from(workHours)
       .where(
         and(
-          sql`${workHours.name}->>'locale' = ${workHour.name?.locale}`,
           eq(workHours.locationId, locationId),
           eq(workHours.date, workHour.date as string)
         )
@@ -186,21 +179,4 @@ async function saveWorkhoursForLocation(
         },
       });
   }
-}
-function translateToLocale(
-  workHours: Partial<WorkHour>[],
-  locale: string,
-  translationsMap: { [key: string]: string }
-): Partial<WorkHour>[] {
-  return workHours.map((workHour) => {
-    return {
-      name: {
-        value: translationsMap[workHour.name!.value.toLowerCase()],
-        locale,
-      },
-      fromHour: workHour.fromHour,
-      toHour: workHour.toHour,
-      date: workHour.date,
-    };
-  });
 }
