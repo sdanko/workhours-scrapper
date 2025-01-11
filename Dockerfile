@@ -1,7 +1,7 @@
 # syntax = docker/dockerfile:1
 
 # Adjust BUN_VERSION as desired
-ARG BUN_VERSION=1.1.13-slim
+ARG BUN_VERSION=1.1.40-slim
 FROM oven/bun:${BUN_VERSION} as base
 
 LABEL fly_launch_runtime="Bun"
@@ -9,7 +9,7 @@ LABEL fly_launch_runtime="Bun"
 # Bun app lives here
 WORKDIR /app
 
-# Install chrome
+# Install curl
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y ca-certificates curl gnupg && \
     curl https://dl-ssl.google.com/linux/linux_signing_key.pub | \

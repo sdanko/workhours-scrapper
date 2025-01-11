@@ -9,17 +9,17 @@ import {
 } from '../utils/dates';
 import { translateToEn } from '../translations/daysOfTheWeek';
 import { bypassFlare } from '../utils/flareBypasser';
+import axios from 'axios';
 
 export class Studenac implements Scrapper {
   retailName = 'Studenac';
 
   async fetch(db: NodePgDatabase<typeof schema>): Promise<void> {
     try {
-      const response = await bypassFlare('https://www.studenac.hr/trgovine');
+      const response = await axios.get('https://www.studenac.hr/trgovine');
       const $ = cheerio.load(response.data);
 
       const locations: string[] = [];
-      const locationResolvers: Promise<Partial<LocationWithWorkhours>>[] = [];
 
       // Find the ul with id "storeList"
       $('#storeList li').each((_, element) => {

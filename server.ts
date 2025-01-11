@@ -34,6 +34,7 @@ const scrappers: Scrapper[] = [
   new Eurospin(),
   new Spar(),
   new Lidl(),
+  new Studenac(),
 ];
 
 // process HTTP requests

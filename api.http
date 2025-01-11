@@ -22,12 +22,22 @@ GET {{workHoursScrapperBaseUri}}/api/scrape/spar
 ### Scrape Lidl
 GET {{workHoursScrapperBaseUri}}/api/scrape/lidl
 
-### Flare Bypasser
+### Flare Bypasser 1
 POST http://flare-bypasser.flycast/v1
 Content-Type: application/json
 
 {
   "cmd": "request.get",
-  "url": "https://www.spar.hr/lokacije/spar-supermarket-zagreb-10000-tina-ujevia-17",
+  "url": "https://www.studenac.hr/trgovine/1379/t1522-zagreb",
+  "maxTimeout": 60000
+}
+
+### Flare Bypasser 2
+POST http://flare-bypasser.flycast/v1
+Content-Type: application/json
+
+{
+  "cmd": "request.get",
+  "url": "https://www.studenac.hr/trgovine/248/t225-bibinje",
   "maxTimeout": 60000
 }
