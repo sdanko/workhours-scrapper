@@ -8,6 +8,16 @@ export const weekDays: readonly string[] = [
   'Nedjelja',
 ];
 
+export const weekDaysLowercase: readonly string[] = [
+  'ponedjeljak',
+  'utorak',
+  'srijeda',
+  'četvrtak',
+  'petak',
+  'subota',
+  'nedjelja',
+];
+
 export const weekDaysThreeLetter: readonly string[] = [
   'pon',
   'uto',

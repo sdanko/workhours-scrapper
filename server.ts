@@ -9,9 +9,13 @@ import { client, connectRedis } from './redisClient';
 import { Eurospin } from './scrappers/eurospin';
 import { Spar } from './scrappers/spar';
 import { Lidl } from './scrappers/lidl';
+import { Plodine } from './scrappers/plodine';
+import { Tommy } from './scrappers/tommy';
 
 // fetch configuration fron environment variables
 const PORT = process.env.PORT || 3000;
+
+const ALL_RETAILS_KEY = 'retail:all';
 
 // open database
 const pool = new pg.Pool({
@@ -35,6 +39,8 @@ const scrappers: Scrapper[] = [
   new Spar(),
   new Lidl(),
   new Studenac(),
+  new Plodine(),
+  new Tommy(),
 ];
 
 // process HTTP requests
@@ -73,6 +79,14 @@ const server = Bun.serve({
       triggerLidlScrapper();
       return new Response('Scraping Lidl triggered', { status: 200 });
     }
+    if (method === 'GET' && pathname === '/api/scrape/plodine') {
+      triggerPlodineScrapper();
+      return new Response('Scraping Plodine triggered', { status: 200 });
+    }
+    if (method === 'GET' && pathname === '/api/scrape/tommy') {
+      triggerTommyScrapper();
+      return new Response('Scraping Tommy triggered', { status: 200 });
+    }
     if (method === 'GET' && pathname === '/api/clear-cache') {
       await clearCache();
       return new Response('Cache cleared', { status: 200 });
@@ -90,7 +104,26 @@ async function triggerScrappers() {
       const key = `retail:${scrapper.retailName.toLowerCase()}`;
       await client.del(key);
     }
-    await client.del(`retail:all`);
+    await client.del(ALL_RETAILS_KEY);
+  } catch (error: unknown) {
+    // handle errors
+    if (error instanceof Error) {
+      console.error(error.stack || error);
+    } else {
+      // Handle non-Error exceptions (rare but possible)
+      console.error(String(error));
+    }
+  } finally {
+    exit();
+  }
+}
+
+async function triggerScrapper(scrapper: Scrapper) {
+  try {
+    await scrapper.fetch(db);
+
+    const key = `retail:${scrapper.retailName.toLowerCase()}`;
+    await client.del(key);
   } catch (error: unknown) {
     // handle errors
     if (error instanceof Error) {
@@ -105,123 +138,43 @@ async function triggerScrappers() {
 }
 
 async function triggerKonzumScrapper() {
-  try {
-    const scrapper = new Konzum();
-    await scrapper.fetch(db);
-
-    const key = `retail:${scrapper.retailName.toLowerCase()}`;
-    await client.del(key);
-  } catch (error: unknown) {
-    // handle errors
-    if (error instanceof Error) {
-      console.error(error.stack || error);
-    } else {
-      // Handle non-Error exceptions (rare but possible)
-      console.error(String(error));
-    }
-  } finally {
-    exit();
-  }
+  const scrapper = new Konzum();
+  triggerScrapper(scrapper);
 }
 
 async function triggerStudenacScrapper() {
-  try {
-    const scrapper = new Studenac();
-    await scrapper.fetch(db);
-
-    const key = `retail:${scrapper.retailName.toLowerCase()}`;
-    await client.del(key);
-  } catch (error: unknown) {
-    // handle errors
-    if (error instanceof Error) {
-      console.error(error.stack || error);
-    } else {
-      // Handle non-Error exceptions (rare but possible)
-      console.error(String(error));
-    }
-  } finally {
-    exit();
-  }
+  const scrapper = new Studenac();
+  triggerScrapper(scrapper);
 }
 
 async function triggerKauflandScrapper() {
-  try {
-    const scrapper = new Kaufland();
-    await scrapper.fetch(db);
-
-    const key = `retail:${scrapper.retailName.toLowerCase()}`;
-    await client.del(key);
-  } catch (error: unknown) {
-    // handle errors
-    if (error instanceof Error) {
-      console.error(error.stack || error);
-    } else {
-      // Handle non-Error exceptions (rare but possible)
-      console.error(String(error));
-    }
-  } finally {
-    exit();
-  }
+  const scrapper = new Kaufland();
+  triggerScrapper(scrapper);
 }
 
 async function triggerEurospinScrapper() {
-  try {
-    const scrapper = new Eurospin();
-    await scrapper.fetch(db);
-
-    const key = `retail:${scrapper.retailName.toLowerCase()}`;
-    await client.del(key);
-  } catch (error: unknown) {
-    // handle errors
-    if (error instanceof Error) {
-      console.error(error.stack || error);
-    } else {
-      // Handle non-Error exceptions (rare but possible)
-      console.error(String(error));
-    }
-  } finally {
-    exit();
-  }
+  const scrapper = new Eurospin();
+  triggerScrapper(scrapper);
 }
 
 async function triggerSparScrapper() {
-  try {
-    const scrapper = new Spar();
-    await scrapper.fetch(db);
-
-    const key = `retail:${scrapper.retailName.toLowerCase()}`;
-    await client.del(key);
-  } catch (error: unknown) {
-    // handle errors
-    if (error instanceof Error) {
-      console.error(error.stack || error);
-    } else {
-      // Handle non-Error exceptions (rare but possible)
-      console.error(String(error));
-    }
-  } finally {
-    exit();
-  }
+  const scrapper = new Spar();
+  triggerScrapper(scrapper);
 }
 
 async function triggerLidlScrapper() {
-  try {
-    const scrapper = new Lidl();
-    await scrapper.fetch(db);
+  const scrapper = new Lidl();
+  triggerScrapper(scrapper);
+}
 
-    const key = `retail:${scrapper.retailName.toLowerCase()}`;
-    await client.del(key);
-  } catch (error: unknown) {
-    // handle errors
-    if (error instanceof Error) {
-      console.error(error.stack || error);
-    } else {
-      // Handle non-Error exceptions (rare but possible)
-      console.error(String(error));
-    }
-  } finally {
-    exit();
-  }
+async function triggerPlodineScrapper() {
+  const scrapper = new Plodine();
+  triggerScrapper(scrapper);
+}
+
+async function triggerTommyScrapper() {
+  const scrapper = new Tommy();
+  triggerScrapper(scrapper);
 }
 
 async function clearCache() {
@@ -230,7 +183,7 @@ async function clearCache() {
       const key = `retail:${scrapper.retailName.toLowerCase()}`;
       await client.del(key);
     }
-    await client.del(`retail:all`);
+    await client.del(ALL_RETAILS_KEY);
   } catch (error: unknown) {
     // handle errors
     if (error instanceof Error) {

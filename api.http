@@ -22,13 +22,19 @@ GET {{workHoursScrapperBaseUri}}/api/scrape/spar
 ### Scrape Lidl
 GET {{workHoursScrapperBaseUri}}/api/scrape/lidl
 
+### Scrape Plodine
+GET {{workHoursScrapperBaseUri}}/api/scrape/plodine
+
+### Scrape Tommy
+GET {{workHoursScrapperBaseUri}}/api/scrape/tommy
+
 ### Flare Bypasser 1
 POST http://flare-bypasser.flycast/v1
 Content-Type: application/json
 
 {
   "cmd": "request.get",
-  "url": "https://www.studenac.hr/trgovine/1379/t1522-zagreb",
+  "url": "https://www.kaufland.hr/usluge/poslovnica/zagreb-pescenica-zitnjak-7130.html",
   "maxTimeout": 60000
 }
 

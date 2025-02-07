@@ -14,6 +14,22 @@ import {
 import { translateToEn } from '../translations/daysOfTheWeek';
 
 export class Kaufland implements Scrapper {
+  invalidLocationUrls = [
+    'https://www.kaufland.hr/usluge/poslovnica/varazdin-banfica-2330.html',
+    'https://www.kaufland.hr/usluge/poslovnica/osijek-novi-grad-3130.html',
+    'https://www.kaufland.hr/usluge/poslovnica/zagreb-pescenica-7130.html',
+    'https://www.kaufland.hr/usluge/poslovnica/zadar-visnjik-2030.html',
+    'https://www.kaufland.hr/usluge/poslovnica/rijeka-zamet-1730.html',
+    'https://www.kaufland.hr/usluge/poslovnica/zagreb-sesvete-luka-3430.html',
+    'https://www.kaufland.hr/usluge/poslovnica/split-ravne-njive-1630.html',
+  ];
+  additionalLocationUrls = [
+    'https://www.kaufland.hr/usluge/poslovnica/varazdin-2330.html',
+    'https://www.kaufland.hr/usluge/poslovnica/osijek-3130.html',
+    'https://www.kaufland.hr/usluge/poslovnica/zagreb-pescenica-zitnjak-7130.html',
+    'https://www.kaufland.hr/usluge/poslovnica/rijeka-1730.html',
+    'https://www.kaufland.hr/usluge/poslovnica/split-1630.html',
+  ];
   retailName = 'Kaufland';
 
   async fetch(db: NodePgDatabase<typeof schema>): Promise<void> {
@@ -27,12 +43,15 @@ export class Kaufland implements Scrapper {
       // Find all <loc> tags and filter URLs containing "poslovnica"
       $('url loc').each((_, loc) => {
         const url = $(loc).text();
-        if (url.includes('poslovnica')) {
+        if (
+          url.includes('poslovnica') &&
+          !this.invalidLocationUrls.includes(url)
+        ) {
           locations.push(url);
         }
       });
 
-      for (const location of locations) {
+      for (const location of locations.concat(this.additionalLocationUrls)) {
         locationResolvers.push(this.resolveLocation(location));
       }
 

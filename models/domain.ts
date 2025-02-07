@@ -63,3 +63,32 @@ export type LocationWithWorkhours = {
   description: string;
   workHours: Partial<WorkHour>[];
 };
+
+export type TommyData = {
+  'hydra:member': TommyLocation[];
+};
+
+export type TommyLocation = {
+  name: string;
+  address: TommyAddress;
+  phoneNumber: string;
+  storeType: string;
+  businessHours: TommyWorkHours;
+};
+
+export type TommyAddress = {
+  street: string;
+  city: string;
+  postcode: string;
+};
+
+export type TommyWorkHours = {
+  workweekSchedule: TommyWorkHourSchedule;
+  saturdaySchedule: TommyWorkHourSchedule;
+  sundaySchedule: TommyWorkHourSchedule;
+};
+
+export type TommyWorkHourSchedule = {
+  start: string;
+  end: string;
+};

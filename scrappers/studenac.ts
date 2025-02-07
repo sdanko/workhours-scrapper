@@ -1,15 +1,15 @@
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { Scrapper, LocationWithWorkhours, WorkHour } from '../models/domain';
-import * as schema from '../db/schema';
-import * as cheerio from 'cheerio';
-import { saveDataToPostgres } from '../utils/db';
-import {
-  getIsoStringDateAndTime,
-  getDayDateInCurrentWeek,
-} from '../utils/dates';
-import { translateToEn } from '../translations/daysOfTheWeek';
-import { bypassFlare } from '../utils/flareBypasser';
 import axios from 'axios';
+import * as cheerio from 'cheerio';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../db/schema';
+import { LocationWithWorkhours, Scrapper, WorkHour } from '../models/domain';
+import { translateToEn } from '../translations/daysOfTheWeek';
+import {
+  getDayDateInCurrentWeek,
+  getIsoStringDateAndTime,
+} from '../utils/dates';
+import { saveLocationsInBatches } from '../utils/db';
+import { bypassFlare } from '../utils/flareBypasser';
 
 export class Studenac implements Scrapper {
   retailName = 'Studenac';
@@ -40,7 +40,7 @@ export class Studenac implements Scrapper {
         }
       }
 
-      await this.saveDataInBatches(resolvedLocations, db, 100);
+      await saveLocationsInBatches(resolvedLocations, db, 100, this.retailName);
     } catch (error) {
       console.error('Error fetching locations:', error);
     }
@@ -91,17 +91,5 @@ export class Studenac implements Scrapper {
           x.name?.hr === 'Nedjelja' && x.fromHour !== null && x.toHour !== null
       ),
     };
-  }
-
-  async saveDataInBatches(
-    data: Partial<LocationWithWorkhours>[],
-    db: NodePgDatabase<typeof schema>,
-    batchSize: number
-  ): Promise<void> {
-    for (let i = 0; i < data.length; i += batchSize) {
-      const batch = data.slice(i, i + batchSize);
-
-      await saveDataToPostgres(db, batch, this.retailName);
-    }
   }
 }

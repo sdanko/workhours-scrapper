@@ -180,3 +180,16 @@ async function saveWorkhoursForLocation(
       });
   }
 }
+
+export async function saveLocationsInBatches(
+  data: Partial<LocationWithWorkhours>[],
+  db: NodePgDatabase<typeof schema>,
+  batchSize: number,
+  retailName: string
+): Promise<void> {
+  for (let i = 0; i < data.length; i += batchSize) {
+    const batch = data.slice(i, i + batchSize);
+
+    await saveDataToPostgres(db, batch, retailName);
+  }
+}

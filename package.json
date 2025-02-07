@@ -8,6 +8,7 @@
   "dependencies": {
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
+    "domhandler": "^5.0.3",
     "drizzle-orm": "^0.31.4",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
@@ -16,7 +17,7 @@
     "redis": "^4.7.0"
   },
   "devDependencies": {
-    "@types/node": "^20.17.10",
+    "@types/cheerio": "^0.22.35",
     "@types/pg": "^8.11.10",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
