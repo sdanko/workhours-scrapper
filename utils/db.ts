@@ -156,6 +156,10 @@ async function saveWorkhoursForLocation(
         )
       );
 
+    if (locationId === 232) {
+      console.log('existingWorkhour', existingWorkhour);
+    }
+
     const upsertValues: Partial<WorkHour> = {
       locationId,
       name: workHour.name,

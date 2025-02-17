@@ -47,3 +47,6 @@ Content-Type: application/json
   "url": "https://www.studenac.hr/trgovine/248/t225-bibinje",
   "maxTimeout": 60000
 }
+
+### Konzum locations
+GET https://trgovine.konzum.hr/api/locations
