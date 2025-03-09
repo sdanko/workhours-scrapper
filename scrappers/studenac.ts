@@ -38,6 +38,7 @@ export class Studenac implements Scrapper {
         if (resolvedLocation) {
           resolvedLocations.push(resolvedLocation);
         }
+        await new Promise((resolve) => setTimeout(resolve, 10000));
       }
 
       await saveLocationsInBatches(resolvedLocations, db, 100, this.retailName);

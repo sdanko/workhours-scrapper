@@ -25,7 +25,7 @@ const pool = new pg.Pool({
   keepAlive: true,
 });
 
-const db = drizzle(pool, { schema, logger: true });
+const db = drizzle(pool, { schema, logger: false });
 
 // initialize Redis connection
 connectRedis().catch((err) =>
@@ -38,7 +38,6 @@ const scrappers: Scrapper[] = [
   new Eurospin(),
   new Spar(),
   new Lidl(),
-  new Studenac(),
   new Plodine(),
   new Tommy(),
 ];

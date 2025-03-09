@@ -34,7 +34,7 @@ Content-Type: application/json
 
 {
   "cmd": "request.get",
-  "url": "https://www.kaufland.hr/usluge/poslovnica/zagreb-pescenica-zitnjak-7130.html",
+  "url": "https://www.studenac.hr/trgovine/478/t514-bale-valle",
   "maxTimeout": 60000
 }
 
@@ -44,7 +44,7 @@ Content-Type: application/json
 
 {
   "cmd": "request.get",
-  "url": "https://www.studenac.hr/trgovine/248/t225-bibinje",
+  "url": "https://www.studenac.hr/trgovine/1256/t991-bale",
   "maxTimeout": 60000
 }
 
